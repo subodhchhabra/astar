@@ -42,7 +42,7 @@ class Node:
         self.f = self.g + self.h
 
     def key(self):
-        return self.x << 16 + self.y
+        return self.x, self.y
 
     def __hash__(self):
         return self.x << 16 + self.y
@@ -65,7 +65,6 @@ class PriorityQueue:
         if item.key() in self.m:
             if item < self.m[item.key()]:
                 self.q.remove(self.m[item.key()])
-                del self.m[item.key()]
                 heapq.heapify(self.q)
                 heapq.heappush(self.q, item)
                 self.m[item.key()] = item
@@ -85,7 +84,6 @@ class PriorityQueue:
 class Astar:
     def __init__(self, start, goal, isInBounds, cap=None):
         self.closedset = set()
-        self.currentSet = set()
         self.openset = PriorityQueue()
         self.openset.push(start)
         self.checkBounds = isInBounds
