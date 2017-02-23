@@ -60,26 +60,19 @@ class PriorityQueue:
     def push(self, item):
         if(item.key() in self.m):
             if(item < self.m[item.key()]):
-                k = self.m[item.key()]
-                print('q', len(self.q))
-                print('m', len(self.m))
-                for n, i in enumerate(self.q):
-                    print(n, i.x, i.y)
-                for k in self.m:
-                    print(k, self.m[k].x, self.m[k].y)
-                print('k', k.x, k.y)
-                self.q.remove(k)
+                self.q.remove(self.m[item.key()])
                 del self.m[item.key()]
-                print('q', len(self.q))
-                print('m', len(self.m))
-                raise Exception('hit')
                 heapq.heapify(self.q)
-
-        heapq.heappush(self.q, item)
-        self.m[item.key()] = item
+                heapq.heappush(self.q, item)
+                self.m[item.key()] = item
+        else:
+            heapq.heappush(self.q, item)
+            self.m[item.key()] = item
 
     def pop(self):
-        return heapq.heappop(self.q)
+        k = heapq.heappop(self.q)
+        del self.m[k.key()]
+        return k
 
     def size(self):
         return len(self.q)
