@@ -45,7 +45,7 @@ class Node:
         return self.x, self.y
 
     def __hash__(self):
-        return self.x << 16 + self.y
+        return hash((self.x, self.y))
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
