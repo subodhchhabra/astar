@@ -11,13 +11,16 @@ import heapq, math
 def euclidean(a, b):
     return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2)
 
+
 def manhattan(a, b):
     return abs(a.x - b.x) + abs(a.y - b.y)
 
-maze_fname = "maze.txt"  # default maze name
-delay_ms = 50            # default number of milliseconds to wait
-heuristic = euclidean    # specify which herusitic to use
-cost = euclidean         # don't change this
+
+maze_fname = "maze.txt"      # default maze name
+delay_ms = 50                # default number of milliseconds to wait
+heuristic = euclidean        # specify which herusitic to use
+heuristic_tie_break = 0.001  # to break ties of multiple equal paths
+cost = euclidean             # don't change this
 
 
 class Node:
@@ -34,7 +37,7 @@ class Node:
         if goal is None:
             self.h = 0
         else:
-            self.h = heuristic(goal, self)
+            self.h = heuristic(goal, self) * (1 + heuristic_tie_break)
 
         self.f = self.g + self.h
 
