@@ -1,22 +1,23 @@
-import heapq
-import math
-import time
+# astar.py [mazefile] [delay]
+#
+# 'mazefile' allows you to specify a custom maze.
+# 'delay' is the delay between steps in milliseconds.
+
+import curses, signal, sys
+import heapq, math
 
 
-maze_path = "maze.txt"
-search_max_iter = 9999
-
-
-def euclidian(a, b):
+# heuristics
+def euclidean(a, b):
     return math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2)
 
+def manhattan(a, b):
+    return abs(a.x - b.x) + abs(a.y - b.y)
 
-def cost(a, b):
-    return euclidian(a, b)
-
-
-def heuristic(a, b):
-    return euclidian(a, b)
+maze_fname = "maze.txt"  # default maze name
+delay_ms = 50            # default number of milliseconds to wait
+heuristic = euclidean    # specify which herusitic to use
+cost = euclidean         # don't change this
 
 
 class Node:
@@ -25,12 +26,12 @@ class Node:
         self.y = y
         self.parent = parent
 
-        if(parent is None):
+        if parent is None:
             self.g = 0
         else:
             self.g = cost(parent, self) + parent.g
 
-        if(goal is None):
+        if goal is None:
             self.h = 0
         else:
             self.h = heuristic(goal, self)
@@ -47,7 +48,7 @@ class Node:
         return self.x == other.x and self.y == other.y
 
     def __lt__(self, other):
-        if(self.f == other.f):
+        if self.f == other.f:
             return self.g < other.g
         return self.f < other.f
 
@@ -58,8 +59,8 @@ class PriorityQueue:
         self.m = {}
 
     def push(self, item):
-        if(item.key() in self.m):
-            if(item < self.m[item.key()]):
+        if item.key() in self.m:
+            if item < self.m[item.key()]:
                 self.q.remove(self.m[item.key()])
                 del self.m[item.key()]
                 heapq.heapify(self.q)
@@ -110,7 +111,7 @@ class Astar:
         ]
 
         for i in neighbors:
-            if(self.checkBounds(i.x, i.y) and i not in self.closedset):
+            if self.checkBounds(i.x, i.y) and i not in self.closedset:
                 self.openset.push(i)
 
         return False, current_node, current_node.g, self.counter
@@ -122,11 +123,11 @@ class Field:
             self.maze = f.readlines()
 
         self.rows = len(self.maze)
-        if(self.rows < 3):
-            raise Exception('invalid maze')
+        if self.rows < 3:
+            raise RuntimeError('invalid maze')
         self.cols = len(self.maze[0]) - 1
-        if(self.cols < 3):
-            raise Exception('invalid maze')
+        if self.cols < 3:
+            raise RuntimeError('invalid maze')
 
     def toString(self, openset, closedset, path=None):
         nmaze = self.maze[:]
@@ -144,7 +145,7 @@ class Field:
             k[node.x] = 'O'
             nmaze[node.y] = ''.join(k)
 
-        while(path is not None):
+        while path is not None:
             k = list(nmaze[path.y])
             k[path.x] = u'\u2588'
             nmaze[path.y] = ''.join(k)
@@ -152,51 +153,53 @@ class Field:
 
         return ''.join(nmaze)
 
-
-maze = Field(maze_path)
-
-
-def isInMazeBounds(x, y):
-    return maze.maze[y][x] != '#'
+    def isInBounds(self, x, y):
+        return self.maze[y][x] != '#'
 
 
-goal = Node(maze.cols - 2, maze.rows - 2, None, None)
-start = Node(1, 1, None, goal)
 
-s = Astar(start, goal, isInMazeBounds, 9999)
+if __name__ == '__main__':
+    # parse args
+    if len(sys.argv) >= 2:
+        maze_fname = sys.argv[1]
+        if len(sys.argv) == 3:
+            delay_ms = int(sys.argv[2])
 
-while(s.openset.size() > 0 and
-        (search_max_iter is None or s.counter < search_max_iter)):
-    done, node, node_g, counter = s.search()
-    print(maze.toString(s.openset, s.closedset, node))
-    print("iterations: {}  cost: {}".format(counter, node_g))
-    if(done):
-        break
-    time.sleep(0.02)
+    maze = Field(maze_fname)
+    goal = Node(maze.cols - 2, maze.rows - 2, None, None)
+    start = Node(1, 1, None, goal)
+    s = Astar(start, goal, maze.isInBounds, 9999)
+    success = False
 
+    # curses setup
+    def exit_gracefully(*_):
+        curses.endwin()
+        sys.exit()
 
-# for i, v in enumerate(maze.maze):
-#     print(i, v)
+    curses.initscr()
+    curses.noecho()
+    win = curses.newwin(maze.rows+10, maze.cols+10)
+    signal.signal(signal.SIGINT, exit_gracefully)
 
-# end = Node(9, 9, None, None)
-# node1 = Node(0, 0, None, end)
-# node2 = Node(1, 0, node1, end)
-# node3 = Node(2, 0, node2, end)
-# node4 = Node(2, 1, node3, end)
-# node5 = Node(2, 0, node4, end)
-# node6 = Node(2, 2, node4, end)
-# node7 = Node(3, 2, node6, end)
-#
-# openset = PriorityQueue()
-#
-# openset.push(node1.as_tuple())
-# openset.push(node2.as_tuple())
-# openset.push(node3.as_tuple())
-# openset.push(node4.as_tuple())
-# openset.push(node5.as_tuple())
-# openset.push(node6.as_tuple())
-# openset.push(node7.as_tuple())
-#
-# while openset.size() > 0:
-#     f, g, i = openset.pop()
-#     print(f, g)
+    # run astar
+    while s.openset.size() > 0:
+        done, node, node_g, counter = s.search()
+
+        # output to curses
+        win.erase()
+        win.addstr(maze.toString(s.openset, s.closedset, node))
+        win.addstr("iterations: {:<6}\n".format(counter))
+        win.addstr("path cost: {:.2f}".format(node_g))
+        win.refresh()
+
+        if done:
+            success = True
+            break
+
+        curses.napms(delay_ms)
+
+    curses.endwin()
+    print(maze.toString(s.openset, s.closedset, node), end='')
+    print("iterations: {:<6}".format(counter))
+    print("path cost: {:.2f}".format(node_g if success else math.inf))
+    print("success!" if success else "could not find path to goal :(")
